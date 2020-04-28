@@ -7,6 +7,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+    _ "github.com/jinzhu/gorm/dialects/mssql"
 )
 
 const (
@@ -49,12 +50,9 @@ func (m *ConnectionManager) Remove(name string) {
 
 func (m *ConnectionManager) Get(name string) *Connection {
 	con, ok := m.connList[name]
-	fmt.Println(name, con, ok, m.connList)
 	if !ok {
 		return nil
 	}
-	fmt.Println(name, con, ok, m.connList)
-
 	return con
 }
 
@@ -68,6 +66,33 @@ func (m *ConnectionManager) Exist(name string) bool {
 
 func (m *ConnectionManager) Length() int {
 	return len(m.connList)
+}
+
+func (m *ConnectionManager) OpenConnections() (*Connection, error) {
+	for k, _ := range m.connList {
+		_, err := m.connList[k].GetGormDB()
+		if err != nil {
+			return m.connList[k], err
+		}
+	}
+	return nil, nil
+}
+
+func (m *ConnectionManager) CloseConnections() {
+	for k, _ := range m.connList {
+		m.connList[k].DisconnectGormDB()
+	}
+}
+
+func (m *ConnectionManager) Debug(debug bool) (*Connection, error) {
+	for k, _ := range m.connList {
+		db, err := m.connList[k].GetGormDB()
+		if err != nil {
+			return m.connList[k], err
+		}
+		db.LogMode(debug)
+	}
+	return nil, nil
 }
 
 func (m ConnectionManager) String() string {
